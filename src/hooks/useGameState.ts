@@ -6,13 +6,70 @@ import { toast } from 'sonner';
 // Local storage keys
 const STORAGE_KEYS = {
   BEST_SCORE: '2048-prettier-best-score',
-  GAME_STATE: '2048-prettier-game-state'
+  GAME_STATE: '2048-prettier-game-state',
+  TIMER: '2048-prettier-timer'
 };
 
 // Only major milestone values get toast notifications
 const MILESTONE_VALUES = [256, 512, 1024, 2048, 4096, 8192];
 
-// Load best score from localStorage - memoized to avoid repeated parsing
+// Load game state from localStorage
+const loadGameState = (): GameState | null => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const savedState = localStorage.getItem(STORAGE_KEYS.GAME_STATE);
+    if (!savedState) return null;
+    
+    const parsedState = JSON.parse(savedState) as GameState;
+    // Validate the loaded state has the correct structure
+    if (!parsedState.board || !Array.isArray(parsedState.board)) {
+      return null;
+    }
+    
+    return parsedState;
+  } catch (error) {
+    console.error('Error loading game state:', error);
+    return null;
+  }
+};
+
+// Save game state to localStorage
+const saveGameState = (state: GameState): void => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.setItem(STORAGE_KEYS.GAME_STATE, JSON.stringify(state));
+  } catch (error) {
+    console.error('Error saving game state:', error);
+  }
+};
+
+// Load timer from localStorage
+const loadTimer = (): number => {
+  if (typeof window === 'undefined') return 0;
+  
+  try {
+    const savedTimer = localStorage.getItem(STORAGE_KEYS.TIMER);
+    return savedTimer ? parseInt(savedTimer, 10) : 0;
+  } catch (error) {
+    console.error('Error loading timer:', error);
+    return 0;
+  }
+};
+
+// Save timer to localStorage
+const saveTimer = (time: number): void => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.setItem(STORAGE_KEYS.TIMER, time.toString());
+  } catch (error) {
+    console.error('Error saving timer:', error);
+  }
+};
+
+// Load best score from localStorage
 const loadBestScore = (): number => {
   if (typeof window === 'undefined') return 0;
   
@@ -36,25 +93,43 @@ const saveBestScore = (score: number): void => {
   }
 };
 
-// Create initial game state with persisted best score
-const createPersistedGameState = (): GameState => {
+// Create initial game state
+const createInitialPersistedState = (): GameState => {
   const initialState = createInitialGameState();
   return {
     ...initialState,
-    bestScore: loadBestScore()
+    bestScore: 0, // Will be updated after mount
+    achievedMilestones: []
   };
 };
 
 // Game state reducer
 function gameReducer(state: GameState, action: GameAction): GameState {
+  let newState: GameState;
+  
   switch (action.type) {
     case 'INITIALIZE':
-      // Initialize or reset game state with persisted best score
-      return createPersistedGameState();
+      newState = createInitialPersistedState();
+      break;
+      
+    case 'LOAD_SAVED_STATE':
+      const savedState = loadGameState();
+      if (savedState) {
+        newState = {
+          ...savedState,
+          bestScore: Math.max(savedState.bestScore, loadBestScore())
+        };
+      } else {
+        newState = {
+          ...createInitialPersistedState(),
+          bestScore: loadBestScore()
+        };
+      }
+      break;
       
     case 'MOVE':
       // Create a deep copy of the current state
-      const newState = JSON.parse(JSON.stringify(state)) as GameState;
+      newState = JSON.parse(JSON.stringify(state)) as GameState;
       
       // Store previous values for comparison
       const previousBestScore = newState.bestScore;
@@ -76,11 +151,9 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
       
-      // Check for milestone achievements ONLY for significant tiles
-      // and only if they haven't been achieved in this game session
+      // Check for milestone achievements
       newState.tilesToAdd.forEach(tile => {
         if (MILESTONE_VALUES.includes(tile.value) && !newState.achievedMilestones?.includes(tile.value)) {
-          // Add this milestone to the current game's achieved milestones
           if (!newState.achievedMilestones) {
             newState.achievedMilestones = [];
           }
@@ -94,42 +167,59 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           });
         }
       });
-      
-      return newState;
+      break;
       
     case 'NEW_GAME':
       // Start a new game while preserving best score
-      // Reset achieved milestones for the new game
-      return {
-        ...createPersistedGameState(),
+      newState = {
+        ...createInitialGameState(),
+        bestScore: state.bestScore,
         achievedMilestones: [] // Reset milestones for the new game
       };
+      break;
       
     case 'CONTINUE_GAME':
       // Continue playing after winning
-      return {
+      newState = {
         ...state,
         won: false,
       };
+      break;
       
     default:
       return state;
   }
+  
+  // Auto-save state after each action (except INITIALIZE)
+  if (action.type !== 'INITIALIZE') {
+    saveGameState(newState);
+  }
+  return newState;
 }
 
 // Custom hook for game state management
 export function useGameState() {
-  // Initialize game state using reducer
-  const [state, dispatch] = useReducer(gameReducer, null, () => ({
-    ...createPersistedGameState(),
-    achievedMilestones: [] // Initialize with empty achievements for this game session
-  }));
+  // Initialize with a clean state for SSR
+  const [state, dispatch] = useReducer(gameReducer, null, createInitialPersistedState);
   
   // Timer state
   const [timer, setTimer] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   
-  // Start timer when game starts
+  // Load persisted state after mount
+  useEffect(() => {
+    dispatch({ type: 'LOAD_SAVED_STATE' });
+    setTimer(loadTimer());
+  }, []);
+  
+  // Save timer whenever it changes
+  useEffect(() => {
+    if (timer > 0) { // Only save non-zero timer values
+      saveTimer(timer);
+    }
+  }, [timer]);
+  
+  // Start/stop timer based on game state
   useEffect(() => {
     // Start timer on first move
     if (state.moved && !isTimerRunning) {
@@ -148,13 +238,17 @@ export function useGameState() {
     }
   }, [state.moved, state.score, state.over, isTimerRunning]);
   
-  // Timer interval - optimized with useCallback
+  // Timer interval
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     
     if (isTimerRunning) {
       interval = setInterval(() => {
-        setTimer(prevTimer => prevTimer + 1);
+        setTimer(prevTimer => {
+          const newTimer = prevTimer + 1;
+          saveTimer(newTimer);
+          return newTimer;
+        });
       }, 1000);
     }
     

@@ -34,6 +34,7 @@ export interface GameState {
 
 export type GameAction = 
   | { type: 'INITIALIZE' }
+  | { type: 'LOAD_SAVED_STATE' }
   | { type: 'MOVE', direction: Direction }
   | { type: 'NEW_GAME' }
   | { type: 'CONTINUE_GAME' };

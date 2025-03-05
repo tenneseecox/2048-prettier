@@ -12,6 +12,17 @@ const DIRECTION_VECTORS = {
 const TRAVERSAL_INDICES = Array(4).fill(0).map((_, i) => i);
 const REVERSED_TRAVERSAL_INDICES = [...TRAVERSAL_INDICES].reverse();
 
+// Counter for generating unique IDs
+let tileIdCounter = 0;
+
+/**
+ * Generates a unique ID for tiles
+ */
+function generateTileId(): string {
+  tileIdCounter++;
+  return `${Date.now()}-${tileIdCounter}-${Math.random().toString(36).substring(2, 7)}`;
+}
+
 /**
  * Creates a new game state with initial values
  */
@@ -56,7 +67,7 @@ export function addRandomTile(state: GameState): void {
   const value = Math.random() < 0.9 ? 2 : 4;
   
   const tile: Tile = {
-    id: `${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: generateTileId(),
     value: value as Exclude<TileValue, null>,
     position: randomPosition,
     isNew: true,
@@ -240,9 +251,9 @@ export function move(state: GameState, direction: Direction): void {
           const mergeTile = board[next.y][next.x] as Tile;
           const newValue = tile.value * 2 as Exclude<TileValue, null>;
           
-          // Create a merged tile
+          // Create a merged tile with a unique ID
           const mergedTile: Tile = {
-            id: `${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            id: generateTileId(),
             value: newValue,
             position: { x: next.x, y: next.y },
             mergedFrom: [tile, mergeTile]
