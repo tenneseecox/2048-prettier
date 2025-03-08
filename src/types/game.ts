@@ -30,6 +30,9 @@ export interface GameState {
   tilesToAdd: Tile[];
   moved: boolean;
   achievedMilestones?: number[];
+  winAcknowledged: boolean;
+  achieved4096: boolean;
+  achieved8192: boolean;
 }
 
 export type GameAction = 
@@ -37,7 +40,11 @@ export type GameAction =
   | { type: 'LOAD_SAVED_STATE' }
   | { type: 'MOVE', direction: Direction }
   | { type: 'NEW_GAME' }
-  | { type: 'CONTINUE_GAME' };
+  | { type: 'CONTINUE_GAME' }
+  | { type: 'SIMULATE_WIN' }
+  | { type: 'SIMULATE_LOSE' }
+  | { type: 'SIMULATE_4096' }
+  | { type: 'SIMULATE_8192' };
 
 export interface AnimationState {
   isAnimating: boolean;

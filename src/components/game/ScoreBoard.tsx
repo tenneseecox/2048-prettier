@@ -14,6 +14,7 @@ export const ScoreBoard = memo(function ScoreBoard({ score, bestScore, timer }: 
   return (
     <div className="grid grid-cols-3 w-full text-center rounded-md bg-slate-900/70 border border-slate-800/90 shadow-sm overflow-hidden">
       <ScoreItem 
+        key={`score-${score}`}
         icon={<HashIcon className="h-4 w-4" />}
         label="SCORE"
         value={score}
@@ -21,12 +22,14 @@ export const ScoreBoard = memo(function ScoreBoard({ score, bestScore, timer }: 
       />
       
       <ScoreItem 
+        key={`best-${bestScore}`}
         icon={<TrophyIcon className="h-4 w-4" />}
         label="BEST"
         value={bestScore}
       />
       
       <ScoreItem 
+        key={`timer-${timer}`}
         icon={<ClockIcon className="h-4 w-4" />}
         label="TIME"
         valueText={timer || '00:00'}
@@ -91,7 +94,7 @@ const ScoreItem = memo(function ScoreItem({
       </div>
       <AnimatePresence mode="wait">
         <motion.div
-          key={displayValue}
+          key={`${label}-${displayValue}`}
           initial={{ opacity: 0.8, y: -2 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0.8, y: 2 }}

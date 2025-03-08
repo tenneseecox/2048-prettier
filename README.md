@@ -25,6 +25,19 @@ This implementation includes several performance optimizations:
 - Smooth animations using Framer Motion
 - Responsive layout that adapts to different screen sizes
 
+## Deployment
+
+This game is deployed on Vercel. You can:
+
+1. Play it live at: [2048-prettier.vercel.app](https://2048-prettier.vercel.app)
+2. Deploy your own version:
+   - Fork this repository
+   - Import it on [Vercel](https://vercel.com)
+   - Deploy with default settings
+   - No environment variables needed
+
+Your game will be instantly deployed and available at `https://your-repo-name.vercel.app`
+
 ## Getting Started
 
 ### Prerequisites
@@ -37,7 +50,7 @@ This implementation includes several performance optimizations:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/2048-prettier.git
+git clone https://github.com/tenneseecox/2048-prettier.git
 cd 2048-prettier
 ```
 

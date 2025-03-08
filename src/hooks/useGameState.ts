@@ -99,7 +99,9 @@ const createInitialPersistedState = (): GameState => {
   return {
     ...initialState,
     bestScore: 0, // Will be updated after mount
-    achievedMilestones: []
+    achievedMilestones: [],
+    achieved4096: false,
+    achieved8192: false
   };
 };
 
@@ -133,9 +135,16 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       
       // Store previous values for comparison
       const previousBestScore = newState.bestScore;
+      const previousScore = newState.score;
       
       // Apply move and update state
       move(newState, action.direction);
+      
+      // Force a re-render if score changed
+      if (newState.score !== previousScore) {
+        // Score changed, ensure UI updates
+        newState = { ...newState };
+      }
       
       // Update best score if needed
       if (newState.score > newState.bestScore) {
@@ -153,6 +162,17 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       
       // Check for milestone achievements
       newState.tilesToAdd.forEach(tile => {
+        // Check for 4096 and 8192 achievements
+        if (tile.value === 4096) {
+          newState.achieved4096 = true;
+          newState.won = true;
+          newState.winAcknowledged = false;
+        } else if (tile.value === 8192) {
+          newState.achieved8192 = true;
+          newState.won = true;
+          newState.winAcknowledged = false;
+        }
+        
         if (MILESTONE_VALUES.includes(tile.value) && !newState.achievedMilestones?.includes(tile.value)) {
           if (!newState.achievedMilestones) {
             newState.achievedMilestones = [];
@@ -174,7 +194,9 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       newState = {
         ...createInitialGameState(),
         bestScore: state.bestScore,
-        achievedMilestones: [] // Reset milestones for the new game
+        achievedMilestones: [], // Reset milestones for the new game
+        achieved4096: false,    // Reset 4096 achievement
+        achieved8192: false     // Reset 8192 achievement
       };
       break;
       
@@ -183,6 +205,46 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       newState = {
         ...state,
         won: false,
+        winAcknowledged: true, // Mark that the player has acknowledged the win
+        // Keep the achievement flags so we don't show the same modal again
+      };
+      break;
+      
+    case 'SIMULATE_WIN':
+      // Simulate winning the game
+      newState = {
+        ...state,
+        won: true,
+        winAcknowledged: false, // Set to false to show the win modal
+      };
+      break;
+      
+    case 'SIMULATE_LOSE':
+      // Simulate losing the game
+      newState = {
+        ...state,
+        over: true,
+        won: false,
+      };
+      break;
+      
+    case 'SIMULATE_4096':
+      // Simulate achieving 4096 tile
+      newState = {
+        ...state,
+        won: true,
+        achieved4096: true,
+        winAcknowledged: false,
+      };
+      break;
+      
+    case 'SIMULATE_8192':
+      // Simulate achieving 8192 tile
+      newState = {
+        ...state,
+        won: true,
+        achieved8192: true,
+        winAcknowledged: false,
       };
       break;
       
@@ -232,11 +294,16 @@ export function useGameState() {
       setIsTimerRunning(false);
     }
     
-    // Stop timer when game is over
-    if (state.over) {
+    // Stop timer when game is over or won
+    if (state.over || state.won) {
       setIsTimerRunning(false);
     }
-  }, [state.moved, state.score, state.over, isTimerRunning]);
+    
+    // Resume timer if continuing after win
+    if (state.winAcknowledged && !state.over && !isTimerRunning && state.moved) {
+      setIsTimerRunning(true);
+    }
+  }, [state.moved, state.score, state.over, state.won, state.winAcknowledged, isTimerRunning]);
   
   // Timer interval
   useEffect(() => {
@@ -261,6 +328,34 @@ export function useGameState() {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (state.over) return;
     
+    // Debug hotkey to simulate win (Shift+K)
+    if (event.key === 'K' && event.shiftKey) {
+      event.preventDefault();
+      dispatch({ type: 'SIMULATE_WIN' });
+      return;
+    }
+    
+    // Debug hotkey to simulate lose (Shift+L)
+    if (event.key === 'L' && event.shiftKey) {
+      event.preventDefault();
+      dispatch({ type: 'SIMULATE_LOSE' });
+      return;
+    }
+    
+    // Debug hotkey to simulate 4096 achievement (Shift+N)
+    if (event.key === 'N' && event.shiftKey) {
+      event.preventDefault();
+      dispatch({ type: 'SIMULATE_4096' });
+      return;
+    }
+    
+    // Debug hotkey to simulate 8192 achievement (Shift+M)
+    if (event.key === 'M' && event.shiftKey) {
+      event.preventDefault();
+      dispatch({ type: 'SIMULATE_8192' });
+      return;
+    }
+    
     let direction: Direction | null = null;
     
     // Arrow keys
@@ -279,7 +374,7 @@ export function useGameState() {
       event.preventDefault();
       dispatch({ type: 'MOVE', direction });
     }
-  }, [state.over]);
+  }, [state.over, dispatch]);
   
   // Set up event listeners
   useEffect(() => {
@@ -293,22 +388,13 @@ export function useGameState() {
   
   // Show toast when game is over (only once)
   useEffect(() => {
-    if (state.over) {
-      toast.error('Game Over!', {
-        description: `Final score: ${state.score} | Time: ${formatTime(timer)}`,
-        duration: 3000
-      });
-    }
-  }, [state.over, state.score, timer]);
+    // Toast removed - now using LoseModal instead
+  }, [state.over]);
   
   // Show toast when game is won (only once)
   useEffect(() => {
-    if (state.won) {
-      toast.success('You reached 2048!', {
-        description: 'Continue playing to reach even higher scores!',
-        duration: 3000
-      });
-    }
+    // Toast removed to avoid duplication with modal
+    // The modal now serves as the notification for reaching 2048
   }, [state.won]);
   
   // Format timer as MM:SS - memoized to avoid recalculation
@@ -342,5 +428,13 @@ export function useGameState() {
     moveInDirection,
     startNewGame,
     continueGame,
-  }), [state, timer, formattedTime, moveInDirection, startNewGame, continueGame]);
+  }), [
+    state, 
+    state.score, // Explicitly include score in dependency array
+    timer, 
+    formattedTime, 
+    moveInDirection, 
+    startNewGame, 
+    continueGame
+  ]);
 } 

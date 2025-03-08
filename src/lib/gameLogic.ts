@@ -37,6 +37,9 @@ export function createInitialGameState(): GameState {
     tilesToRemove: [],
     tilesToAdd: [],
     moved: false,
+    winAcknowledged: false,
+    achieved4096: false,
+    achieved8192: false,
   };
 
   // Add two initial tiles
@@ -290,9 +293,11 @@ export function move(state: GameState, direction: Direction): void {
   if (state.moved) {
     addRandomTile(state);
     
-    // Check if game is over or won
+    // Check if game is over
     state.over = isGameOver(state);
-    if (!state.won) {
+    
+    // Only check for win if player hasn't already won and acknowledged it
+    if (!state.won && !state.winAcknowledged) {
       state.won = hasWon(state);
     }
   }

@@ -1,21 +1,20 @@
 'use client';
 
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Board } from '@/components/game/Board';
 import { Controls } from '@/components/game/Controls';
 import { ScoreBoard } from '@/components/game/ScoreBoard';
+import { WinModal } from '@/components/game/WinModal';
+import { LoseModal } from '@/components/game/LoseModal';
+import { AdvancedWinModal } from '@/components/game/AdvancedWinModal';
+import { StatsDashboard } from '@/components/game/StatsDashboard';
 import { useGameState } from '@/hooks/useGameState';
 import { Toaster } from '@/components/ui/sonner';
-import { AnimatePresence, motion } from 'framer-motion';
 
 const GameHeader = memo(function GameHeader({ 
-  startNewGame, 
-  continueGame, 
-  gameWon 
+  startNewGame
 }: { 
   startNewGame: () => void; 
-  continueGame: () => void; 
-  gameWon: boolean;
 }) {
   return (
     <div className="w-full flex justify-between items-center mb-3">
@@ -30,8 +29,6 @@ const GameHeader = memo(function GameHeader({
       
       <Controls 
         onNewGame={startNewGame} 
-        onContinue={continueGame}
-        gameWon={gameWon}
       />
     </div>
   );
@@ -44,7 +41,7 @@ const GameFooter = memo(function GameFooter() {
       <p>
         2048 Prettier • 
         <a 
-          href="https://github.com/your-username/2048-prettier" 
+          href="https://github.com/tenneseecox/2048-prettier" 
           target="_blank" 
           rel="noopener noreferrer"
           className="ml-1 text-blue-400 hover:text-blue-300 transition-colors"
@@ -56,54 +53,9 @@ const GameFooter = memo(function GameFooter() {
   );
 });
 
-const GameStatusMessages = memo(function GameStatusMessages({
-  won,
-  over,
-  startNewGame
-}: {
-  won: boolean;
-  over: boolean;
-  startNewGame: () => void;
-}) {
-  // Memoize animation properties
-  const winAnimation = useMemo(() => ({
-    initial: { opacity: 0, y: 10 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -10 }
-  }), []);
-  
-  const gameOverAnimation = useMemo(() => ({
-    initial: { opacity: 0, y: 10 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -10 }
-  }), []);
-  
-  return (
-    <AnimatePresence>
-      {won && (
-        <motion.div
-          {...winAnimation}
-          className="w-full text-center py-2 px-3 bg-gradient-to-r from-lime-500 to-green-500 rounded-lg text-sm font-bold text-white shadow-sm"
-        >
-          You reached 2048! 🎉
-        </motion.div>
-      )}
-      
-      {over && (
-        <motion.button
-          onClick={startNewGame}
-          {...gameOverAnimation}
-          className="w-full text-center py-2 px-3 bg-gradient-to-r from-slate-700 to-slate-800 rounded-lg text-sm font-bold text-white shadow-sm border border-slate-600/30 hover:bg-gradient-to-r hover:from-slate-600 hover:to-slate-700 transition-colors cursor-pointer"
-        >
-          Game Over! Click to try again
-        </motion.button>
-      )}
-    </AnimatePresence>
-  );
-});
-
 export default function Home() {
   const { state, moveInDirection, startNewGame, continueGame, formattedTime } = useGameState();
+  const [showStats, setShowStats] = useState(false);
   
   // Memoize container classes to prevent recalculation
   const containerClass = useMemo(() => 
@@ -126,41 +78,98 @@ export default function Home() {
     []
   );
 
+  // Handle win modal actions
+  const handleCloseWinModal = () => {
+    continueGame();
+  };
+
+  const handleViewStats = () => {
+    continueGame();
+    setShowStats(true);
+  };
+
+  const handleBackFromStats = () => {
+    setShowStats(false);
+  };
+
   return (
     <div className={containerClass}>
       {/* Main content area with flex-grow */}
       <div className={contentContainerClass}>
         <div className={innerContainerClass}>
-          {/* Header row with title and controls */}
-          <GameHeader 
-            startNewGame={startNewGame} 
-            continueGame={continueGame} 
-            gameWon={state.won} 
-          />
-          
-          {/* Scoreboard */}
-          <div className="w-full mb-3">
-            <ScoreBoard 
-              score={state.score} 
-              bestScore={state.bestScore}
-              timer={formattedTime}
-            />
-          </div>
-          
-          {/* Game board */}
-          <div className="w-full mb-3">
-            <Board 
-              gameState={state} 
-              onMove={moveInDirection}
-            />
-          </div>
-          
-          {/* Game status messages */}
-          <GameStatusMessages 
-            won={state.won} 
-            over={state.over} 
-            startNewGame={startNewGame} 
-          />
+          {!showStats ? (
+            <>
+              {/* Header row with title and controls */}
+              <GameHeader 
+                startNewGame={startNewGame} 
+              />
+              
+              {/* Scoreboard */}
+              <div className="w-full mb-3">
+                <ScoreBoard 
+                  score={state.score} 
+                  bestScore={state.bestScore}
+                  timer={formattedTime}
+                  key={`scoreboard-${state.score}-${state.bestScore}`}
+                />
+              </div>
+              
+              {/* Game board */}
+              <div className="w-full mb-3">
+                <Board 
+                  gameState={state} 
+                  onMove={moveInDirection}
+                />
+              </div>
+              
+              {/* Win modal */}
+              <WinModal 
+                isOpen={state.won && !state.achieved4096 && !state.achieved8192}
+                onClose={handleCloseWinModal}
+                onNewGame={startNewGame}
+                onContinue={handleCloseWinModal}
+                onViewStats={handleViewStats}
+                score={state.score}
+                time={formattedTime}
+              />
+              
+              {/* Advanced Win Modal for 4096 */}
+              <AdvancedWinModal 
+                isOpen={state.won && state.achieved4096 && !state.achieved8192}
+                onClose={handleCloseWinModal}
+                onNewGame={startNewGame}
+                onContinue={handleCloseWinModal}
+                onViewStats={handleViewStats}
+                score={state.score}
+                time={formattedTime}
+                achievementLevel="4096"
+              />
+              
+              {/* Advanced Win Modal for 8192 */}
+              <AdvancedWinModal 
+                isOpen={state.won && state.achieved8192}
+                onClose={handleCloseWinModal}
+                onNewGame={startNewGame}
+                onContinue={handleCloseWinModal}
+                onViewStats={handleViewStats}
+                score={state.score}
+                time={formattedTime}
+                achievementLevel="8192"
+              />
+              
+              {/* Lose modal */}
+              <LoseModal 
+                isOpen={state.over && !state.won}
+                onClose={startNewGame}
+                onNewGame={startNewGame}
+                onViewStats={handleViewStats}
+                score={state.score}
+                time={formattedTime}
+              />
+            </>
+          ) : (
+            <StatsDashboard onBack={handleBackFromStats} />
+          )}
         </div>
       </div>
       
@@ -172,6 +181,7 @@ export default function Home() {
         <GameFooter />
       </div>
       
+      {/* Toast notifications */}
       <Toaster position="bottom-center" />
     </div>
   );
