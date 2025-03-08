@@ -209,6 +209,22 @@ export const WinModal = memo(function WinModal({
             letter-spacing: 0.5px;
             text-align: center;
           }
+          
+          /* Achievement tile */
+          .achievement-tile {
+            font-size: 24px;
+            font-weight: 700;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 8px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          }
         `}</style>
         
         {/* Rainbow border effect */}
@@ -225,6 +241,11 @@ export const WinModal = memo(function WinModal({
             {/* Trophy badge */}
             <div className="trophy-badge">
               <Trophy size={32} className="text-white" />
+            </div>
+            
+            {/* Achievement tile */}
+            <div className="achievement-tile">
+              2048
             </div>
             
             <motion.div
@@ -257,57 +278,38 @@ export const WinModal = memo(function WinModal({
                 </div>
               </div>
               
-              <div className="w-24 h-0.5 bg-slate-700/50 mb-4"></div>
-              
-              <p className="text-sm text-slate-300 max-w-[280px] text-center mb-2">
-                {randomMessage}
-              </p>
+              <div className="px-2 text-sm text-slate-300 italic mb-6">
+                &ldquo;{randomMessage}&rdquo;
+              </div>
             </motion.div>
           </div>
           
-          <div className="flex flex-col gap-3 mt-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
+          {/* Action buttons - updated to match AdvancedWinModal */}
+          <div className="flex flex-col gap-2">
+            <Button 
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white"
+              onClick={onContinue}
             >
-              <Button 
-                onClick={onNewGame} 
-                className="w-full bg-blue-500/90 hover:bg-blue-600 text-white font-normal text-sm"
-              >
-                New Game
-              </Button>
-            </motion.div>
+              <PlayIcon className="mr-2 h-4 w-4" />
+              Continue Playing
+            </Button>
             
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
+            <Button 
+              variant="outline" 
+              className="w-full border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+              onClick={onViewStats}
             >
-              <Button 
-                onClick={onContinue} 
-                variant="outline"
-                className="w-full border-green-400/30 bg-green-500/10 text-green-300 hover:bg-green-500/20 font-normal text-sm"
-              >
-                <PlayIcon className="h-3.5 w-3.5 mr-2" />
-                Continue Playing
-              </Button>
-            </motion.div>
+              <BarChartIcon className="mr-2 h-4 w-4" />
+              View Stats
+            </Button>
             
-            <motion.div
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
+            <Button 
+              variant="ghost" 
+              className="w-full text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+              onClick={onNewGame}
             >
-              <Button 
-                onClick={onViewStats} 
-                variant="outline"
-                className="w-full border-slate-400/30 bg-slate-700/20 text-slate-200 hover:bg-slate-700/30 font-normal text-sm"
-              >
-                <BarChartIcon className="h-3.5 w-3.5 mr-2" />
-                View Stats
-              </Button>
-            </motion.div>
+              New Game
+            </Button>
           </div>
         </div>
       </motion.div>
